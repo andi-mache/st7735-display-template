@@ -29,6 +29,18 @@ A bare-metal `no_std` Rust application for the ESP32 that displays a live dashbo
 | SCK    | GPIO18     |
 | MOSI   | GPIO23     |
 
+
+|Pin Name   |	Description                                 |
+|-----------|-----------------------------------------------|
+|VCC        |	Power supply (2.8V to 3.3V)					|
+|GND        |	Ground										|
+|SCL (CLK)  |	Serial Clock (SPI clock input)				|
+|SDA (MOSI) |	Serial Data (SPI data input)				|
+|RES (RST)  |	Reset pin (active low)						|
+|DC (A0)    |	Data/Command control pin					|
+|CS         |	Chip Select (active low)					|
+|LED        |	Backlight control (connect to power or PWM) |
+
 SPI clock: 40 MHz, Mode 0 (CPOL=0, CPHA=0). The display is write-only so no MISO connection is needed.
 
 ---
