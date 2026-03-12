@@ -117,7 +117,7 @@ fn main() -> ! {
 ///     prelude::*,
 /// };
 /// ```
-fn draw<DI, MODEL>(display: &mut mipidsi::Display<DI, MODEL, Output<'_>>, delay: &mut Delay)
+fn draw<DI, MODEL>(_display: &mut mipidsi::Display<DI, MODEL, Output<'_>>, delay: &mut Delay)
 where
     DI: mipidsi::interface::Interface,
     MODEL: mipidsi::models::Model<ColorFormat = Rgb565>,
