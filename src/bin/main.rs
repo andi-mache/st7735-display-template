@@ -55,30 +55,24 @@ use embedded_graphics::{
     text::{Alignment, Text, TextStyleBuilder},
 };
 
-use mipidsi::{
-    Builder,
-    interface::SpiInterface,
-    models::ST7735s,
-    options::ColorOrder,
-};
+use mipidsi::{Builder, interface::SpiInterface, models::ST7735s, options::ColorOrder};
 
 use esp_hal::{
-	clock::CpuClock,
+    clock::CpuClock,
     delay::Delay,
     gpio::{Level, Output, OutputConfig},
     main,
+    peripherals::Peripherals,
     spi::{
         Mode,
         master::{Config, Spi},
     },
-    time::Rate,
+    time::{Duration, Instant, Rate},
 };
 
 // core::fmt::Write provides write!() for heapless::String formatting.
 use core::fmt::Write;
 
-use esp_hal::peripherals::Peripherals;
-use esp_hal::time::{Duration, Instant};
 use esp_println::{self as _, println};
 
 // ── Panic handler ─────────────────────────────────────────────────────────
@@ -96,7 +90,7 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 /// Background colour — pure black.
 const BG: Rgb565 = Rgb565::BLACK;
 
-/// Header bar background — very dark navy blue.
+/// Header bar background — very dark navy darkslategray.
 const HEADER_BG: Rgb565 = Rgb565::new(29, 0, 7);
 
 /// Primary accent — bright cyan.
@@ -109,7 +103,7 @@ const ACCENT_LIME: Rgb565 = Rgb565::new(0, 59, 12);
 const TEXT_WHITE: Rgb565 = Rgb565::WHITE;
 
 /// Dimmed text — dark grey-green.
-const TEXT_DIM: Rgb565 = Rgb565::new(12, 22, 12);
+const TEXT_DIM: Rgb565 = Rgb565::new(31, 62, 0);
 
 /// Section divider line colour.
 const DIVIDER: Rgb565 = Rgb565::new(4, 10, 6);
@@ -136,18 +130,18 @@ esp_bootloader_esp_idf::esp_app_desc!();
 /// display loop — updating the dashboard once per second, forever.
 #[main]
 fn main() -> ! {
-	defmt::warn!("Hi, from main loop");	
+    defmt::warn!("Hi, from main loop");
     let peripherals = init_hardware();
 
     let mut delay = Delay::new();
 
     // ── GPIO setup ────────────────────────────────────────────────────
-    // DC (Data/Command): LOW = command byte, HIGH = pixel data.
+    // DC/AO (Data/Command): LOW = command byte, HIGH = pixel data.
     // RST (Reset): active-low; initialised HIGH (not in reset).
     // CS  (Chip Select): active-low; initialised HIGH (deselected).
-    let dc  = Output::new(peripherals.GPIO22, Level::Low,  OutputConfig::default());
+    let dc = Output::new(peripherals.GPIO22, Level::Low, OutputConfig::default());
     let rst = Output::new(peripherals.GPIO19, Level::High, OutputConfig::default());
-    let cs  = Output::new(peripherals.GPIO21, Level::High, OutputConfig::default());
+    let cs = Output::new(peripherals.GPIO21, Level::High, OutputConfig::default());
 
     // ── SPI bus ───────────────────────────────────────────────────────
     // SPI2 (HSPI) in Mode 0 at 40 MHz. SCK on GPIO18, MOSI on GPIO23.
@@ -182,7 +176,13 @@ fn main() -> ! {
     // ── Boot animation → initial dashboard ───────────────────────────
     boot_animation(&mut display, &mut delay);
     draw_static_ui(&mut display);
-    draw_dynamic_ui(&mut display, &DashState { uptime_hms: (0, 0, 0), tick: 0 });
+    draw_dynamic_ui(
+        &mut display,
+        &DashState {
+            uptime_hms: (0, 0, 0),
+            tick: 0,
+        },
+    );
 
     // Record boot time for uptime calculation.
     let start = Instant::now();
@@ -198,10 +198,13 @@ fn main() -> ! {
         let m = ((elapsed % 3600) / 60) as u8;
         let s = (elapsed % 60) as u8;
 
-        draw_dynamic_ui(&mut display, &DashState {
-            uptime_hms: (h, m, s),
-            tick,
-        });
+        draw_dynamic_ui(
+            &mut display,
+            &DashState {
+                uptime_hms: (h, m, s),
+                tick,
+            },
+        );
 
         println!("tick={} uptime={:02}:{:02}:{:02}", tick, h, m, s);
 
@@ -221,10 +224,7 @@ fn main() -> ! {
 ///
 /// The arc is 150° wide and advances 45° per frame, completing one full
 /// revolution every 8 frames (~2 seconds at 250 ms/frame).
-fn draw_spinner<DI, MODEL>(
-    display: &mut mipidsi::Display<DI, MODEL, Output<'_>>,
-    frame: u8,
-)
+fn draw_spinner<DI, MODEL>(display: &mut mipidsi::Display<DI, MODEL, Output<'_>>, frame: u8)
 where
     DI: mipidsi::interface::Interface,
     MODEL: mipidsi::models::Model<ColorFormat = Rgb565>,
@@ -236,7 +236,8 @@ where
     // Erase previous frame before drawing new position.
     Rectangle::new(TOP_LEFT, Size::new(DIAMETER + 1, DIAMETER + 1))
         .into_styled(PrimitiveStyle::with_fill(BG))
-        .draw(display).unwrap();
+        .draw(display)
+        .unwrap();
 
     let start_deg = (frame as f32) * 45.0;
 
@@ -247,7 +248,8 @@ where
                 .stroke_width(2)
                 .build(),
         )
-        .draw(display).unwrap();
+        .draw(display)
+        .unwrap();
 }
 
 // ── Boot animation ────────────────────────────────────────────────────────
@@ -266,14 +268,13 @@ where
 fn boot_animation<DI, MODEL>(
     display: &mut mipidsi::Display<DI, MODEL, Output<'_>>,
     delay: &mut Delay,
-)
-where
+) where
     DI: mipidsi::interface::Interface,
     MODEL: mipidsi::models::Model<ColorFormat = Rgb565>,
     Rgb565: mipidsi::interface::InterfacePixelFormat<DI::Word>,
 {
     let centered = TextStyleBuilder::new().alignment(Alignment::Center).build();
-    let left     = TextStyleBuilder::new().alignment(Alignment::Left).build();
+    let left = TextStyleBuilder::new().alignment(Alignment::Left).build();
 
     // ── 1. Flash ─────────────────────────────────────────────────────
     display.clear(Rgb565::BLACK).unwrap();
@@ -288,13 +289,15 @@ where
             let prev_y = ((step - 1) * 8) as i32;
             Rectangle::new(Point::new(0, prev_y), Size::new(128, 8))
                 .into_styled(PrimitiveStyle::with_fill(BG))
-                .draw(display).unwrap();
+                .draw(display)
+                .unwrap();
         }
         let y = (step * 8) as i32;
         if y < 128 {
             Rectangle::new(Point::new(0, y), Size::new(128, 3))
                 .into_styled(PrimitiveStyle::with_fill(scan_color))
-                .draw(display).unwrap();
+                .draw(display)
+                .unwrap();
         }
         delay.delay_millis(18);
     }
@@ -308,7 +311,8 @@ where
     for &ch in init_msg {
         Rectangle::new(Point::new(0, 54), Size::new(128, 12))
             .into_styled(PrimitiveStyle::with_fill(BG))
-            .draw(display).unwrap();
+            .draw(display)
+            .unwrap();
 
         typed.push(ch as char).ok();
 
@@ -317,12 +321,15 @@ where
             Point::new(4, 64),
             MonoTextStyle::new(&FONT_6X10, ACCENT_LIME),
             left,
-        ).draw(display).unwrap();
+        )
+        .draw(display)
+        .unwrap();
 
         let cursor_x = 4 + (typed.len() as i32) * 6;
         Rectangle::new(Point::new(cursor_x, 55), Size::new(5, 9))
             .into_styled(PrimitiveStyle::with_fill(ACCENT_LIME))
-            .draw(display).unwrap();
+            .draw(display)
+            .unwrap();
 
         delay.delay_millis(45);
     }
@@ -330,20 +337,21 @@ where
 
     // ── 4. Glitch title ───────────────────────────────────────────────
     // LCG seed 0xDEAD_BEEF: deterministic, so no hardware RNG peripheral needed.
-    let target       = "TFT Dashboard";
+    let target = "TFT Dashboard";
     let target_bytes = target.as_bytes();
-    let len          = target_bytes.len();
+    let len = target_bytes.len();
     let mut lcg: u32 = 0xDEAD_BEEF;
 
     for frame in 0u8..12 {
         Rectangle::new(Point::new(0, 36), Size::new(128, 22))
             .into_styled(PrimitiveStyle::with_fill(BG))
-            .draw(display).unwrap();
+            .draw(display)
+            .unwrap();
 
         let mut glitch: heapless::String<20> = heapless::String::new();
         let resolved_up_to = (frame as usize * len) / 11;
 
-		for i in 0..len {
+        for i in 0..len {
             if i < resolved_up_to {
                 glitch.push(target_bytes[i] as char).ok();
             } else {
@@ -354,13 +362,19 @@ where
             }
         }
 
-        let color = if frame % 2 == 0 { ACCENT_CYAN } else { ACCENT_LIME };
+        let color = if frame % 2 == 0 {
+            ACCENT_CYAN
+        } else {
+            ACCENT_LIME
+        };
         Text::with_text_style(
             glitch.as_str(),
             Point::new(64, 52),
             MonoTextStyle::new(&FONT_10X20, color),
             centered,
-        ).draw(display).unwrap();
+        )
+        .draw(display)
+        .unwrap();
 
         delay.delay_millis(55);
     }
@@ -368,14 +382,17 @@ where
     // Final resolved title in solid white.
     Rectangle::new(Point::new(0, 36), Size::new(128, 22))
         .into_styled(PrimitiveStyle::with_fill(BG))
-        .draw(display).unwrap();
+        .draw(display)
+        .unwrap();
 
     Text::with_text_style(
         target,
         Point::new(64, 52),
         MonoTextStyle::new(&FONT_10X20, TEXT_WHITE),
         centered,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     delay.delay_millis(300);
 
@@ -385,17 +402,21 @@ where
         Point::new(64, 82),
         MonoTextStyle::new(&FONT_6X10, TEXT_DIM),
         centered,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     Rectangle::new(Point::new(14, 88), Size::new(100, 8))
         .into_styled(PrimitiveStyle::with_stroke(ACCENT_CYAN, 1))
-        .draw(display).unwrap();
+        .draw(display)
+        .unwrap();
 
     for step in 1u32..=20 {
         let fill_w = (step * 96) / 20;
         Rectangle::new(Point::new(16, 90), Size::new(fill_w, 4))
             .into_styled(PrimitiveStyle::with_fill(ACCENT_LIME))
-            .draw(display).unwrap();
+            .draw(display)
+            .unwrap();
         delay.delay_millis(35);
     }
 
@@ -405,7 +426,8 @@ where
     for row in 0u32..16 {
         Rectangle::new(Point::new(0, (row * 8) as i32), Size::new(128, 8))
             .into_styled(PrimitiveStyle::with_fill(BG))
-            .draw(display).unwrap();
+            .draw(display)
+            .unwrap();
         delay.delay_millis(8);
     }
 }
@@ -422,19 +444,21 @@ where
     MODEL: mipidsi::models::Model<ColorFormat = Rgb565>,
     Rgb565: mipidsi::interface::InterfacePixelFormat<DI::Word>,
 {
-    let left     = TextStyleBuilder::new().alignment(Alignment::Left).build();
-    let right    = TextStyleBuilder::new().alignment(Alignment::Right).build();
+    let left = TextStyleBuilder::new().alignment(Alignment::Left).build();
+    let right = TextStyleBuilder::new().alignment(Alignment::Right).build();
     let centered = TextStyleBuilder::new().alignment(Alignment::Center).build();
 
     // Header bar (y=0..15)
     Rectangle::new(Point::new(0, 0), Size::new(128, 16))
         .into_styled(PrimitiveStyle::with_fill(HEADER_BG))
-        .draw(display).unwrap();
+        .draw(display)
+        .unwrap();
 
     // Cyan accent rule below header (y=16)
     Rectangle::new(Point::new(0, 16), Size::new(128, 1))
         .into_styled(PrimitiveStyle::with_fill(ACCENT_CYAN))
-        .draw(display).unwrap();
+        .draw(display)
+        .unwrap();
 
     // Title text — centred in the header
     Text::with_text_style(
@@ -442,12 +466,15 @@ where
         Point::new(64, 12),
         MonoTextStyle::new(&FONT_6X10, ACCENT_CYAN),
         centered,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     // Section divider 1 (y=44)
     Rectangle::new(Point::new(0, 44), Size::new(128, 1))
         .into_styled(PrimitiveStyle::with_fill(DIVIDER))
-        .draw(display).unwrap();
+        .draw(display)
+        .unwrap();
 
     // "DISPLAY" section label
     Text::with_text_style(
@@ -455,7 +482,9 @@ where
         Point::new(4, 56),
         MonoTextStyle::new(&FONT_6X10, TEXT_DIM),
         left,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     // Static display info: width and height never change
     Text::with_text_style(
@@ -463,33 +492,42 @@ where
         Point::new(4, 68),
         MonoTextStyle::new(&FONT_6X10, ACCENT_CYAN),
         left,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     Text::with_text_style(
         "128",
         Point::new(124, 68),
         MonoTextStyle::new(&FONT_6X10, TEXT_WHITE),
         right,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     Text::with_text_style(
         "HEIGHT",
         Point::new(4, 80),
         MonoTextStyle::new(&FONT_6X10, ACCENT_CYAN),
         left,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     Text::with_text_style(
         "128",
         Point::new(124, 80),
         MonoTextStyle::new(&FONT_6X10, TEXT_WHITE),
         right,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     // Section divider 2 (y=82)
     Rectangle::new(Point::new(0, 82), Size::new(128, 1))
         .into_styled(PrimitiveStyle::with_fill(DIVIDER))
-        .draw(display).unwrap();
+        .draw(display)
+        .unwrap();
 
     // "LAST UPDATE" section label
     Text::with_text_style(
@@ -497,7 +535,9 @@ where
         Point::new(4, 94),
         MonoTextStyle::new(&FONT_6X10, TEXT_DIM),
         left,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 }
 
 // ── Dynamic UI ────────────────────────────────────────────────────────────
@@ -510,46 +550,53 @@ where
 fn draw_dynamic_ui<DI, MODEL>(
     display: &mut mipidsi::Display<DI, MODEL, Output<'_>>,
     state: &DashState,
-)
-where
+) where
     DI: mipidsi::interface::Interface,
     MODEL: mipidsi::models::Model<ColorFormat = Rgb565>,
     Rgb565: mipidsi::interface::InterfacePixelFormat<DI::Word>,
 {
-    let left     = TextStyleBuilder::new().alignment(Alignment::Left).build();
-    let right    = TextStyleBuilder::new().alignment(Alignment::Right).build();
+    let left = TextStyleBuilder::new().alignment(Alignment::Left).build();
+    let right = TextStyleBuilder::new().alignment(Alignment::Right).build();
     let centered = TextStyleBuilder::new().alignment(Alignment::Center).build();
 
     // ── STATUS row (y=18..30) ─────────────────────────────────────────
     Rectangle::new(Point::new(0, 18), Size::new(128, 13))
         .into_styled(PrimitiveStyle::with_fill(BG))
-        .draw(display).unwrap();
+        .draw(display)
+        .unwrap();
 
     Text::with_text_style(
         "STATUS",
         Point::new(4, 28),
         MonoTextStyle::new(&FONT_6X10, ACCENT_CYAN),
         left,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     Text::with_text_style(
         "READY",
         Point::new(124, 28),
         MonoTextStyle::new(&FONT_6X10, ACCENT_LIME),
         right,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     // ── Uptime row (y=32..44) ─────────────────────────────────────────
     Rectangle::new(Point::new(0, 32), Size::new(128, 13))
         .into_styled(PrimitiveStyle::with_fill(BG))
-        .draw(display).unwrap();
+        .draw(display)
+        .unwrap();
 
     Text::with_text_style(
         "UP",
         Point::new(4, 42),
         MonoTextStyle::new(&FONT_6X10, ACCENT_LIME),
         left,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     let (h, m, s) = state.uptime_hms;
     let mut uptime_str: heapless::String<12> = heapless::String::new();
@@ -560,12 +607,15 @@ where
         Point::new(124, 42),
         MonoTextStyle::new(&FONT_6X10, TEXT_WHITE),
         right,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 
     // ── Tick counter (y=96..119) — large centred cyan number ─────────
     Rectangle::new(Point::new(0, 96), Size::new(128, 24))
         .into_styled(PrimitiveStyle::with_fill(BG))
-        .draw(display).unwrap();
+        .draw(display)
+        .unwrap();
 
     let mut tick_str: heapless::String<16> = heapless::String::new();
     write!(tick_str, "tick {}", state.tick).ok();
@@ -575,7 +625,9 @@ where
         Point::new(64, 118),
         MonoTextStyle::new(&FONT_10X20, ACCENT_CYAN),
         centered,
-    ).draw(display).unwrap();
+    )
+    .draw(display)
+    .unwrap();
 }
 
 // ── Hardware init ─────────────────────────────────────────────────────────

@@ -25,25 +25,20 @@
     holding buffers for the duration of a data transfer."
 )]
 
-use embedded_graphics::{
-    pixelcolor::Rgb565,
-    prelude::*,
-};
+use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 
-use mipidsi::{
-    Builder,
-    interface::SpiInterface,
-    models::ST7735s,
-    options::ColorOrder,
-};
+use mipidsi::{Builder, interface::SpiInterface, models::ST7735s, options::ColorOrder};
 
 use esp_hal::{
+    clock::CpuClock,
     delay::Delay,
     gpio::{Level, Output, OutputConfig},
     main,
-    spi::{Mode, master::{Config, Spi}},
+    spi::{
+        Mode,
+        master::{Config, Spi},
+    },
     time::Rate,
-    clock::CpuClock,
 };
 
 use esp_println::{self as _, println};
@@ -62,16 +57,14 @@ esp_bootloader_esp_idf::esp_app_desc!();
 #[main]
 fn main() -> ! {
     // Initialise ESP32 at max clock speed.
-    let peripherals = esp_hal::init(
-        esp_hal::Config::default().with_cpu_clock(CpuClock::max())
-    );
+    let peripherals = esp_hal::init(esp_hal::Config::default().with_cpu_clock(CpuClock::max()));
 
     let mut delay = Delay::new();
 
     // GPIO pins for the display.
-    let dc  = Output::new(peripherals.GPIO2, Level::Low,  OutputConfig::default());
+    let dc = Output::new(peripherals.GPIO2, Level::Low, OutputConfig::default());
     let rst = Output::new(peripherals.GPIO4, Level::High, OutputConfig::default());
-    let cs  = Output::new(peripherals.GPIO5, Level::High, OutputConfig::default());
+    let cs = Output::new(peripherals.GPIO5, Level::High, OutputConfig::default());
 
     // SPI2 at 40 MHz, Mode 0. SCK = GPIO18, MOSI = GPIO23.
     let spi = Spi::new(
@@ -124,10 +117,7 @@ fn main() -> ! {
 ///     prelude::*,
 /// };
 /// ```
-fn draw<DI, MODEL>(
-    display: &mut mipidsi::Display<DI, MODEL, Output<'_>>,
-    delay: &mut Delay,
-)
+fn draw<DI, MODEL>(display: &mut mipidsi::Display<DI, MODEL, Output<'_>>, delay: &mut Delay)
 where
     DI: mipidsi::interface::Interface,
     MODEL: mipidsi::models::Model<ColorFormat = Rgb565>,
