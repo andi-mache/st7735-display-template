@@ -23,9 +23,9 @@ A bare-metal `no_std` Rust application for the ESP32 that displays a live dashbo
 
 | Signal | ESP32 GPIO |
 |--------|------------|
-| DC     | GPIO2      |
-| RST    | GPIO4      |
-| CS     | GPIO5      |
+| DC     | GPIO22      |
+| RST    | GPIO19      |
+| CS     | GPIO21      |
 | SCK    | GPIO18     |
 | MOSI   | GPIO23     |
 

@@ -23,9 +23,9 @@
 //! ## Hardware wiring
 //! | Signal | ESP32 GPIO |
 //! |--------|------------|
-//! | DC     | GPIO2      |
-//! | RST    | GPIO4      |
-//! | CS     | GPIO5      |
+//! | DC     | GPIO22      |
+//! | RST    | GPIO19      |
+//! | CS     | GPIO21      |
 //! | SCK    | GPIO18     |
 //! | MOSI   | GPIO23     |
 //!
@@ -63,6 +63,7 @@ use mipidsi::{
 };
 
 use esp_hal::{
+	clock::CpuClock,
     delay::Delay,
     gpio::{Level, Output, OutputConfig},
     main,
@@ -76,7 +77,6 @@ use esp_hal::{
 // core::fmt::Write provides write!() for heapless::String formatting.
 use core::fmt::Write;
 
-use esp_hal::clock::CpuClock;
 use esp_hal::peripherals::Peripherals;
 use esp_hal::time::{Duration, Instant};
 use esp_println::{self as _, println};
@@ -136,6 +136,7 @@ esp_bootloader_esp_idf::esp_app_desc!();
 /// display loop — updating the dashboard once per second, forever.
 #[main]
 fn main() -> ! {
+	defmt::warn!("Hi, from main loop");	
     let peripherals = init_hardware();
 
     let mut delay = Delay::new();
@@ -144,9 +145,9 @@ fn main() -> ! {
     // DC (Data/Command): LOW = command byte, HIGH = pixel data.
     // RST (Reset): active-low; initialised HIGH (not in reset).
     // CS  (Chip Select): active-low; initialised HIGH (deselected).
-    let dc  = Output::new(peripherals.GPIO2, Level::Low,  OutputConfig::default());
-    let rst = Output::new(peripherals.GPIO4, Level::High, OutputConfig::default());
-    let cs  = Output::new(peripherals.GPIO5, Level::High, OutputConfig::default());
+    let dc  = Output::new(peripherals.GPIO22, Level::Low,  OutputConfig::default());
+    let rst = Output::new(peripherals.GPIO19, Level::High, OutputConfig::default());
+    let cs  = Output::new(peripherals.GPIO21, Level::High, OutputConfig::default());
 
     // ── SPI bus ───────────────────────────────────────────────────────
     // SPI2 (HSPI) in Mode 0 at 40 MHz. SCK on GPIO18, MOSI on GPIO23.
@@ -342,7 +343,7 @@ where
         let mut glitch: heapless::String<20> = heapless::String::new();
         let resolved_up_to = (frame as usize * len) / 11;
 
-        for i in 0..len {
+		for i in 0..len {
             if i < resolved_up_to {
                 glitch.push(target_bytes[i] as char).ok();
             } else {
