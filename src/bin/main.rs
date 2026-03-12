@@ -97,13 +97,13 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 const BG: Rgb565 = Rgb565::BLACK;
 
 /// Header bar background — very dark navy blue.
-const HEADER_BG: Rgb565 = Rgb565::new(0, 8, 16);
+const HEADER_BG: Rgb565 = Rgb565::new(29, 0, 7);
 
 /// Primary accent — bright cyan.
 const ACCENT_CYAN: Rgb565 = Rgb565::new(0, 63, 31);
 
 /// Success accent — lime green.
-const ACCENT_LIME: Rgb565 = Rgb565::new(4, 50, 4);
+const ACCENT_LIME: Rgb565 = Rgb565::new(0, 59, 12);
 
 /// Primary text — white.
 const TEXT_WHITE: Rgb565 = Rgb565::WHITE;
